@@ -5,6 +5,7 @@ from flask import Flask, request, render_template, jsonify
 
 app = Flask(__name__)
 
+
 #Maing page
 @app.route('/', methods=['GET', 'POST'])
 def mainpage():
@@ -18,26 +19,36 @@ def health():
     return jsonify(response)
 
 
-#adding variables
-@app.route('/instance_ip/<region>/<ip_address>')
-def ip_to_ec2(region, ip_address=''):
+# Get tags Based on Filter Applied
+# Exameple Filters (instance-id, ip-address)
+@app.route('/ec2/<ec2_filter>/', methods=['GET', 'POST'])
+def id_to_ec2(region='us-east-1', instance_id='', ec2_filter=''):
+
+    aws_info = list()
+    data = request.json
+
     client = connect_aws_service(region, 'ec2')
 
-    response = client.describe_instances(
-        Filters=[
-            {
-                'Name': 'ip-address',
-                'Values': [ip_address]
-            },
-        ],
-    )
+    for info in data:
+        response = client.describe_instances(
+            Filters=[
+                {
+                    'Name': ec2_filter,
+                    'Values': [
+                        info
+                    ]
+                },
+            ],
+        )
 
-    for instances in response['Reservations']:
-        for tag in instances.get('Instances'):
-            tag_list = tag['Tags']
-    
-    return get_owner_tag(tag_list)
-  
+        for instances in response['Reservations']:
+            for tag in instances.get('Instances'):
+                tag_list = tag['Tags']
+        
+                aws_info.append(get_owner_tag(tag_list, info))
+
+    return jsonify(aws_info)            
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port='80')
