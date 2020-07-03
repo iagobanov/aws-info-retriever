@@ -1,5 +1,3 @@
-from flask import Flask, request, render_template, jsonify
-
 def get_owner_tag(tag_list, info):
     response = dict()
 
