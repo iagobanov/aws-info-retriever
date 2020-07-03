@@ -19,10 +19,11 @@ def health():
     return jsonify(response)
 
 
+########### EC2 Tasks ###########
 # Get tags Based on Filter Applied
-# Exameple Filters (instance-id, ip-address)
+# Example Filters (instance-id, ip-address)
 @app.route('/ec2/<ec2_filter>/', methods=['GET', 'POST'])
-def id_to_ec2(region='us-east-1', instance_id='', ec2_filter=''):
+def ec2_info(region='us-east-1', instance_id='', ec2_filter=''):
 
     aws_info = list()
     data = request.json
@@ -46,6 +47,38 @@ def id_to_ec2(region='us-east-1', instance_id='', ec2_filter=''):
                 tag_list = tag['Tags']
         
                 aws_info.append(get_owner_tag(tag_list, info))
+
+    return jsonify(aws_info)            
+
+
+########### RDS Tasks ###########
+# Get tags Based on Filter Applied
+# Example Filters (db-instance-id, db-cluster-id)
+@app.route('/rds/<rds_filter>/', methods=['GET', 'POST'])
+def rds_info(region='us-east-1', instance_id='', rds_filter=''):
+
+    aws_info = list()
+    data = request.json
+
+    client = connect_aws_service(region, 'rds')
+
+    for info in data:
+        response = client.describe_db_instances(
+            Filters=[
+                {
+                    'Name': rds_filter,
+                    'Values': [
+                        info
+                    ]
+                },
+            ],
+        )
+
+        for instances in response['DBInstances']:
+            arn = instances.get('DBInstanceArn')
+            tag_list = client.list_tags_for_resource(ResourceName=arn).get('TagList')
+
+            aws_info.append(get_owner_tag(tag_list, info))
 
     return jsonify(aws_info)            
 
